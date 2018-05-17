@@ -1,0 +1,58 @@
+Assorted LKMs - Darin Ellis 5/16/2018
+
+OVERVIEW
+The are 3 main components to this repository. There are 2 loadable kernel 
+modules (LKMs), and a small linux kernel patch file. There is also a small
+test program for the first module.
+
+All of these modules were created and tested using User Mode Linux (UML),
+with version 4.4.108 of the linux kernel.
+
+-Module 1: hellocall
+	This module (soft of) adds a simple system call that prints "hello".
+	What is actually does hijack calls to the deprecated system call
+	remap_file_pages() while it is loaded. So when remap_file_pages() is
+	called, the system call handler actually directs the kernel to execute
+	code in the module. It requires a small patch to the linux kernel to
+	be able to modify the system call table.
+
+-Module 2: counter
+	This module creates a read only psuedo file in /proc called "counter".
+	It simply contains a count of every time the file has been opened. 
+
+INSTALLATION
+The kernel can be patched with ProjectE.patch using "patch -p1 < ../export_systable.patch"
+while inside of the source tree's main directory. The kernel I worked with had 
+"make modules" applied to it. export_systable.patch was generated using 
+"diff -uNr sourceLINUX modifiedLINUX". The only modification this patch
+performs is to export the symbol table so that the first LKM can access it. 
+
+The LKMs and test program can be built using the provided Makefiles.
+NOTE: The Makefile may require an edit to the build path. 
+	Particularly, the name of the directory containing the Linux source
+	tree may need to be changed to match yours.
+
+USAGE
+
+-Module 1: hellocall
+	Load the module with "insmod hellocall.ko".
+	Invoke the hello() (pseudo-)system call by calling remap_file_pages()
+	with any arbitrary arguments. 
+
+-Module 2: counter
+	Load the module with "insmod counter.ko".
+	View the created file at /proc/counter (after mounting proc in UML).
+
+All modules need to be removed by using "rmmod -f <module name>". For some
+reason, rmmod without -f is not sufficient.
+
+TESTING
+
+-Module 1: hellocall
+	There should be a provided "test" directory with a simple c program
+	that invokes hello() through calling remap_file_pages(). Invoke the 
+	Makefile with "make ARCH=um" to compile it and 
+	invoke the program with "./hellotest" while hellocall is loaded.
+
+-Module 2: counter
+	Test by loading and viewing /proc/counter.	
